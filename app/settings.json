@@ -1,0 +1,17 @@
+{
+    "api": {
+        "edamam": {
+            "url": "",
+            "app_id": "",
+            "app_key": ""
+        },
+        "themealdb": {
+            "url": ""
+        },
+        "tasty": {
+            "url": "",
+            "api_key": "",
+            "api_host": ""
+        }
+    }
+}

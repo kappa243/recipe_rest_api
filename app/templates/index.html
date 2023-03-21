@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="static/css/style.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/mgalante/jquery.redirect@master/jquery.redirect.js"></script>
+    <title>Recipes</title>
+</head>
+
+<body>
+    <div class="main">
+        <div class="search">
+            <h2>Search recipe</h2>
+            <form>
+                <input type="text" name="name" placeholder="Name" required>
+                <input type="text" name="category" placeholder="Category">
+                <input type="text" name="area" placeholder="Area">
+                <input type="text" name="ingredient" placeholder="Main ingredient">
+                <input type="submit" value="Search">
+            </form>
+        </div>
+
+        <br>
+
+        <div style="display: none" class="recipelist">
+            <div class="recipes">
+            </div>
+            <div class="navigation">
+                <button class="prev">Prev</button>
+                <button class="next">Next</button>
+            </div>
+        </div>
+
+        <div style="display: none;" class="recipe_result">
+            <div class="recipe_left">
+                <h2 class="recipe_name"></h2>
+                <h3 class="recipe_additional"></h3>
+                <div class="recipe_ingredients">
+                    <h3>Ingredients</h3>
+                    <ul>
+                    </ul>
+                </div>
+                <p class="recipe_instructions"></p>
+            </div>
+            <div class="recipe_right">
+                <img class="recipe_image" src="">
+                <a class="recipe_link" href="">Link to recipe video</a>
+                <br>
+                <div class="nutrition">
+                    <h3>Nutrition</h3>
+                    <div class="nutrition_weight">
+                        Weight: <span class="weight"></span>g
+                    </div>
+                    <br>
+                    <div class="nutrition_fat">
+                        Fat: <span class="fat"></span>g
+                    </div>
+                    <div class="nutrition_saturated_fat">
+                        Saturated fat: <span class="saturated_fat"></span>g
+                    </div>
+                    <div class="nutrition_carbohydrate">
+                        Carbohydrate: <span class="carbohydrate"></span>g
+                    </div>
+                    <div class="nutrition_fiber">
+                        Fiber: <span class="fiber"></span>g
+                    </div>
+                    <div class="nutrition_protein">
+                        Protein: <span class="protein"></span>g
+                    </div>
+                    <div class="nutrition_cholesterol">
+                        Cholesterol: <span class="cholesterol"></span>g
+                    </div>
+                    <br>
+                    <div class="nutrition_energy_calories">
+                        Calories: <span class="energy_calories"></span>kcal
+                    </div>
+                    <div class="nutrition_protein_calories">
+                        Protein calories: <span class="protein_calories"></span>kcal
+                    </div>
+                    <div class="nutrition_fat_calories">
+                        Fat calories: <span class="fat_calories"></span>kcal
+                    </div>
+                    <div class="nutrition_carbohydrate_calories">
+                        Carbohydrate calories: <span class="carbohydrate_calories"></span>kcal
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+</body>
+<script>
+    const form = document.querySelector('form');
+    const inputs = document.querySelectorAll('input');
+    const prev = document.querySelector('.prev');
+    const next = document.querySelector('.next');
+    const submit_butt = document.querySelector('input[type="submit"]');
+
+    var page = 1;
+
+
+
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        // block search button and all inputs
+        inputs.forEach(input => input.disabled = true);
+
+        const name = form.name.value;
+        const category = form.category.value;
+        const area = form.area.value;
+        const ingredient = form.ingredient.value;
+
+        // create query, but if category, area or ingredient is empty, don't add it to the query
+        let query = `?name=${name}&start=${(page - 1) * 10}&size=${10}`;
+        if (category) query += `&category=${category}`;
+        if (area) query += `&area=${area}`;
+        if (ingredient) query += `&ingredient=${ingredient}`;
+
+        // send request to the api
+        $.ajax({
+            url: `/api/recipes${query}`,
+            type: 'GET',
+            dataType: 'json',
+            success: (data) => {
+                const recipelist = document.querySelector('.recipelist');
+                const recipe_result = document.querySelector('.recipe_result');
+                recipelist.style.display = null;
+                recipe_result.style.display = 'none';
+
+
+                const recipes = document.querySelector('.recipes');
+                recipes.innerHTML = '';
+
+                data.recipes.forEach(recipe => {
+                    const recipeDiv = document.createElement('div');
+                    recipeDiv.classList.add('recipe');
+                    recipeDiv.id = recipe.id;
+                    recipeDiv.innerHTML = `
+                        <h3>${recipe.name}</h3>
+                    `;
+
+                    if (recipe.thumbnail) {
+                        const img = document.createElement('img');
+                        img.src = recipe.thumbnail;
+                        recipeDiv.appendChild(img);
+                    }
+
+                    recipeDiv.addEventListener('click', () => {
+                        $.ajax({
+                            url: `/api/recipes/${recipe.id}`,
+                            type: 'GET',
+                            dataType: 'json',
+                            success: (data) => {
+                                recipelist.style.display = 'none';
+                                recipe_result.style.display = null;
+                                const recipe = data;
+
+                                // name
+                                const recipe_name = document.querySelector('.recipe_name');
+                                recipe_name.innerHTML = recipe.name;
+
+                                // category and area
+                                const recipe_additional = document.querySelector('.recipe_additional');
+                                recipe_additional.innerHTML = ` | `;
+                                recipe.category.forEach(category => {
+                                    recipe_additional.innerHTML += `${category} | `;
+                                });
+                                recipe.area.forEach(area => {
+                                    recipe_additional.innerHTML += `${area} | `;
+                                });
+
+                                // ingredients
+                                const recipe_ingredients = document.querySelector('.recipe_ingredients ul');
+                                recipe_ingredients.innerHTML = '';
+                                recipe.ingredients.forEach(ingredient => {
+                                    const li = document.createElement('li');
+                                    li.innerHTML = ingredient.name;
+                                    recipe_ingredients.appendChild(li);
+                                });
+
+                                // instructions
+                                const recipe_instructions = document.querySelector('.recipe_instructions');
+                                // for every line in instruction add a <p> tag
+                                recipe_instructions.innerHTML = '';
+                                recipe.instructions.split('\n').forEach(line => {
+                                    const p = document.createElement('p');
+                                    p.innerHTML = line;
+                                    recipe_instructions.appendChild(p);
+                                });
+
+                                // image
+                                const recipe_image = document.querySelector('.recipe_image');
+                                recipe_image.src = recipe.thumbnail;
+
+                                // video
+                                const recipe_link = document.querySelector('.recipe_link');
+                                recipe_link.href = recipe.video;
+
+                                // nutrition
+                                const nutrition_weight = document.querySelector('.nutrition_weight .weight');
+                                const nutrition_fat = document.querySelector('.nutrition_fat .fat');
+                                const nutrition_saturated_fat = document.querySelector('.nutrition_saturated_fat .saturated_fat');
+                                const nutrition_carbohydrate = document.querySelector('.nutrition_carbohydrate .carbohydrate');
+                                const nutrition_fiber = document.querySelector('.nutrition_fiber .fiber');
+                                const nutrition_protein = document.querySelector('.nutrition_protein .protein');
+                                const nutrition_cholesterol = document.querySelector('.nutrition_cholesterol .cholesterol');
+                                const nutrition_energy_calories = document.querySelector('.nutrition_energy_calories .energy_calories');
+                                const nutrition_protein_calories = document.querySelector('.nutrition_protein_calories .protein_calories');
+                                const nutrition_fat_calories = document.querySelector('.nutrition_fat_calories .fat_calories');
+                                const nutrition_carbohydrate_calories = document.querySelector('.nutrition_carbohydrate_calories .carbohydrate_calories');
+                                
+                                let weight = 0;
+                                let fat = 0;
+                                let saturated_fat = 0;
+                                let carbohydrate = 0;
+                                let fiber = 0;
+                                let protein = 0;
+                                let cholesterol = 0;
+                                let energy_calories = 0;
+                                let protein_calories = 0;
+                                let fat_calories = 0;
+                                let carbohydrate_calories = 0;
+
+                                recipe.ingredients.forEach(ingredient => {
+                                    // if ingredient is not null and ingredient.nutrition is not null
+                                    if (ingredient && ingredient.nutrition) {
+                                        weight += ingredient.nutrition.weight;
+                                        fat += ingredient.nutrition.fat;
+                                        saturated_fat += ingredient.nutrition.saturated_fat;
+                                        carbohydrate += ingredient.nutrition.carbohydrate;
+                                        fiber += ingredient.nutrition.fiber;
+                                        protein += ingredient.nutrition.protein;
+                                        cholesterol += ingredient.nutrition.cholesterol;
+                                        energy_calories += ingredient.nutrition.energy_kcal;
+                                        protein_calories += ingredient.nutrition.protein_kcal;
+                                        fat_calories += ingredient.nutrition.fat_kcal;
+                                        carbohydrate_calories += ingredient.nutrition.carbohydrate_kcal;
+                                    }
+                                })
+
+                                // round to 2 decimal places
+                                nutrition_weight.innerHTML = weight.toFixed(2);
+                                nutrition_fat.innerHTML = fat.toFixed(2);
+                                nutrition_saturated_fat.innerHTML = saturated_fat.toFixed(2);
+                                nutrition_carbohydrate.innerHTML = carbohydrate.toFixed(2);
+                                nutrition_fiber.innerHTML = fiber.toFixed(2);
+                                nutrition_protein.innerHTML = protein.toFixed(2);
+                                nutrition_cholesterol.innerHTML = cholesterol.toFixed(2);
+                                nutrition_energy_calories.innerHTML = energy_calories.toFixed(2);
+                                nutrition_protein_calories.innerHTML = protein_calories.toFixed(2);
+                                nutrition_fat_calories.innerHTML = fat_calories.toFixed(2);
+                                nutrition_carbohydrate_calories.innerHTML = carbohydrate_calories.toFixed(2);
+                                
+                          
+                            },
+                            error: (err) => {
+                                switch(err.status) {
+                                    case 404:
+                                        alert('Recipe not found.');
+                                        break;
+                                    case 422:
+                                        alert('Invalid data provided.');
+                                        break;
+                                    case 500:
+                                        alert('Internal server error.');
+                                        break;
+                                    default:
+                                        alert('There was an error. Please try again later.');
+                                        break;
+                                }
+
+                                
+                                console.log(err);
+                            }
+                        })
+                    });
+
+                    recipes.appendChild(recipeDiv);
+                })
+            },
+            error: (err) => {
+                switch(err.status) {
+                    case 404:
+                        alert('Recipes not found.');
+                        break;
+                    case 500:
+                        alert('Internal server error.');
+                        break;
+                    default:
+                        alert('There was an error. Please try again later.');
+                        break;
+                }
+                console.log(err);
+            },
+            complete: () => {
+                inputs.forEach(input => input.disabled = false);
+            }
+        });
+
+    });
+
+
+    next.addEventListener('click', () => {
+        page++;
+        submit_butt.click();
+    });
+
+    prev.addEventListener('click', () => {
+        page--;
+        submit_butt.click();
+    });
+</script>
+
+</html>
